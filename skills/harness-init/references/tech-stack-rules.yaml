@@ -1,0 +1,439 @@
+# 技术栈规则知识库（机器消费版）
+# 对应人类可读版：tech-stack-rules.md
+# Step 6 生成规范文件和 review_checks.py 时读取本文件
+
+languages:
+  python:
+    coding_rules:
+      - "函数签名必须有类型注解（参数和返回值）"
+      - "类命名 PascalCase，函数/变量 snake_case，常量 UPPER_SNAKE_CASE"
+      - "禁止通配符导入（import *）"
+      - "单函数不超过 50 行（不含 docstring）"
+      - "公共方法必须有 docstring"
+      - "导入顺序：标准库 → 第三方 → 本地，各组之间空一行"
+    testing_rules:
+      - "测试命名格式：test_<方法>_<场景>_<预期结果>"
+      - "单元测试必须 Mock 所有外部依赖"
+      - "集成测试标记 @pytest.mark.integration"
+      - "单元测试套件须在 10 秒内完成"
+    script_checks:
+      - rule_id: PY_001
+        description: "发现 print() 调用（应使用日志库）"
+        fix: "改为日志库调用，如 logger.info(...)"
+        grep_pattern: "^\\s*print("
+        file_glob: "*.py"
+    dir_structure:
+      - "src/core/      核心业务逻辑"
+      - "src/api/       接入层（路由/控制器）"
+      - "src/db/        数据持久化"
+      - "src/config/    配置加载"
+      - "src/utils/     工具函数"
+      - "src/exceptions.py  统一异常定义"
+      - "tests/unit/    单元测试"
+      - "tests/integration/  集成测试"
+
+  typescript:
+    coding_rules:
+      - "禁止使用 any 类型"
+      - "使用 interface 定义对象结构（优先于 type alias）"
+      - "启用 strict 模式（tsconfig.json）"
+      - "类命名 PascalCase，函数/变量 camelCase，常量 UPPER_SNAKE_CASE"
+      - "禁止通配符导入"
+    testing_rules:
+      - "测试文件命名 *.spec.ts 或 *.test.ts"
+      - "单元测试使用 jest.mock() Mock 外部依赖"
+      - "集成测试标记 @group integration"
+    script_checks:
+      - rule_id: TS_001
+        description: "发现 console.log/warn/error/debug 调用（应使用日志库）"
+        fix: "改为 logger.info(...) 或 logger.debug(...)"
+        grep_pattern: "console\\.(log|warn|error|debug)"
+        file_glob: "*.ts"
+      - rule_id: TS_002
+        description: "发现 any 类型使用"
+        fix: "替换为具体类型或 unknown"
+        grep_pattern: ": any[^;]"
+        file_glob: "*.ts"
+    dir_structure:
+      - "src/controllers/   路由控制器"
+      - "src/services/      业务服务"
+      - "src/repositories/  数据访问"
+      - "src/config/        配置"
+      - "src/utils/         工具"
+      - "src/errors/        统一错误定义"
+      - "tests/unit/        单元测试"
+      - "tests/integration/ 集成测试"
+
+  go:
+    coding_rules:
+      - "错误必须处理，禁止 _ = err"
+      - "公共函数必须有注释（godoc 格式）"
+      - "包名使用小写单词，不含下划线"
+      - "接口定义在使用方（依赖倒置）"
+    testing_rules:
+      - "测试函数命名 TestXxx_场景_预期"
+      - "使用 testify/assert 做断言"
+      - "集成测试使用 //go:build integration 标签"
+    script_checks:
+      - rule_id: GO_001
+        description: "发现 fmt.Println/Printf 调用（应使用日志库）"
+        fix: "改为 log.Info(...) 或 logger.Info(...)"
+        grep_pattern: "fmt\\.(Print|Println|Printf)("
+        file_glob: "*.go"
+      - rule_id: GO_002
+        description: "错误被忽略（_ = err）"
+        fix: "处理或显式包装错误后返回"
+        grep_pattern: "_ = err"
+        file_glob: "*.go"
+    dir_structure:
+      - "cmd/                   程序入口"
+      - "internal/handler/      HTTP 处理器"
+      - "internal/service/      业务逻辑"
+      - "internal/repository/   数据访问"
+      - "internal/config/       配置"
+      - "internal/errors/       错误定义"
+      - "pkg/                   可对外暴露的工具包"
+      - "tests/                 测试（integration 子目录）"
+
+  java:
+    coding_rules:
+      - "类命名 PascalCase，方法/变量 camelCase，常量 UPPER_SNAKE_CASE"
+      - "公共方法必须有 Javadoc"
+      - "禁止直接使用 System.out.println"
+      - "业务异常必须继承自统一基类（如 BaseException）"
+    testing_rules:
+      - "测试类命名 XxxTest.java"
+      - "使用 @MockBean 或 Mockito.mock() 隔离依赖"
+      - "集成测试标记 @SpringBootTest"
+    script_checks:
+      - rule_id: JAVA_001
+        description: "发现 System.out.println 调用"
+        fix: "改为 log.info(...) 或 log.debug(...)"
+        grep_pattern: "System\\.out\\.print"
+        file_glob: "*.java"
+    dir_structure:
+      - "src/main/java/{package}/controller/   REST 控制器"
+      - "src/main/java/{package}/service/      业务服务"
+      - "src/main/java/{package}/repository/   数据访问"
+      - "src/main/java/{package}/config/       配置类"
+      - "src/main/java/{package}/exception/    统一异常"
+      - "src/main/java/{package}/util/         工具类"
+      - "src/test/java/{package}/              测试"
+
+logging_libraries:
+  loguru:
+    language: python
+    coding_rules:
+      - "禁止使用 print() 进行输出，统一使用 logger.info() / logger.debug() / logger.warning() / logger.error()"
+      - "日志初始化在应用入口统一配置，禁止在模块内重复配置 logger"
+    script_checks:
+      - rule_id: LOG_001
+        description: "发现 print() 调用（项目使用 loguru，应使用 logger）"
+        fix: "替换为 logger.info(...) 或 logger.debug(...)"
+        grep_pattern: "^\\s*print("
+        file_glob: "*.py"
+
+  winston:
+    language: typescript
+    coding_rules:
+      - "禁止使用 console.log/warn/error，统一使用 logger 实例"
+      - "logger 实例在 src/logger.ts 中统一创建和导出"
+    script_checks:
+      - rule_id: LOG_001
+        description: "发现 console.log/warn/error 调用"
+        fix: "替换为 logger.info(...) / logger.warn(...) / logger.error(...)"
+        grep_pattern: "console\\.(log|warn|error)"
+        file_glob: "*.ts"
+
+  zerolog:
+    language: go
+    coding_rules:
+      - "禁止使用 fmt.Println/Printf，统一使用 log.Info().Msg() 等 zerolog 方法"
+      - "logger 实例通过 context 传递，禁止全局变量"
+    script_checks:
+      - rule_id: LOG_001
+        description: "发现 fmt.Print 系列调用"
+        fix: "替换为 log.Info().Str(\"key\", val).Msg(\"message\")"
+        grep_pattern: "fmt\\.(Print|Println|Printf)("
+        file_glob: "*.go"
+
+  slf4j:
+    language: java
+    coding_rules:
+      - "禁止使用 System.out.println，统一使用 Logger"
+      - "每个类声明 private static final Logger log = LoggerFactory.getLogger(Xxx.class)"
+    script_checks:
+      - rule_id: LOG_001
+        description: "发现 System.out.println 调用"
+        fix: "替换为 log.info(...) 或 log.debug(...)"
+        grep_pattern: "System\\.out\\.print"
+        file_glob: "*.java"
+
+databases:
+  mysql:
+    security_rules:
+      - "禁止在代码中硬编码数据库连接串（host/user/password）"
+      - "数据库凭证必须从环境变量读取（DB_HOST / DB_USER / DB_PASSWORD / DB_NAME）"
+      - "生产数据库不得使用 root 账号"
+    script_checks:
+      - rule_id: DB_SEC_001
+        description: "发现疑似硬编码数据库连接信息"
+        fix: "改为从环境变量或配置模块读取"
+        grep_pattern: "mysql://[^{$]"
+        file_glob: "*.py,*.ts,*.go,*.java,*.env"
+
+  postgresql:
+    security_rules:
+      - "禁止在代码中硬编码数据库连接串（host/user/password）"
+      - "数据库凭证必须从环境变量读取（DB_HOST / DB_USER / DB_PASSWORD / DB_NAME）"
+      - "生产数据库不得使用 root 账号"
+    script_checks:
+      - rule_id: DB_SEC_001
+        description: "发现疑似硬编码数据库连接信息"
+        fix: "改为从环境变量或配置模块读取"
+        grep_pattern: "(postgresql|postgres)://[^{$]"
+        file_glob: "*.py,*.ts,*.go,*.java,*.env"
+
+  mongodb:
+    security_rules:
+      - "禁止硬编码 MongoDB 连接串"
+      - "MONGO_URI 必须从环境变量读取"
+    script_checks:
+      - rule_id: DB_SEC_002
+        description: "发现疑似硬编码 MongoDB 连接串"
+        fix: "改为从环境变量 MONGO_URI 读取"
+        grep_pattern: "mongodb://[^{$]"
+        file_glob: "*.py,*.ts,*.go"
+
+cache:
+  redis:
+    coding_rules:
+      - "Redis 客户端必须通过统一工厂方法获取，禁止在业务代码中直接创建连接"
+    security_rules:
+      - "禁止硬编码 Redis 连接信息（host/password）"
+      - "REDIS_URL / REDIS_PASSWORD 必须从环境变量读取"
+    script_checks:
+      - rule_id: CACHE_SEC_001
+        description: "发现疑似硬编码 Redis 连接信息"
+        fix: "改为从环境变量 REDIS_URL 或配置模块读取"
+        grep_pattern: "redis://.*:.*@"
+        file_glob: "*.py,*.ts,*.go"
+      - rule_id: CACHE_SEC_002
+        description: "发现疑似硬编码 Redis 密码"
+        fix: "改为从环境变量读取"
+        grep_pattern: "REDIS_PASSWORD\\s*=\\s*['\"][^'\"$]"
+        file_glob: "*.py,*.ts,*.go,*.env"
+
+message_queues:
+  rabbitmq:
+    security_rules:
+      - "禁止硬编码 AMQP 连接串（user/password/host）"
+      - "RABBITMQ_URL 必须从环境变量读取"
+    script_checks:
+      - rule_id: MQ_SEC_001
+        description: "发现疑似硬编码 AMQP 连接串"
+        fix: "改为从环境变量 RABBITMQ_URL 读取"
+        grep_pattern: "amqp://[^{$]"
+        file_glob: "*.py,*.ts,*.go"
+
+  kafka:
+    security_rules:
+      - "Kafka broker 地址和认证信息必须从环境变量读取"
+      - "禁止硬编码 bootstrap.servers"
+    script_checks:
+      - rule_id: MQ_SEC_002
+        description: "发现疑似硬编码 Kafka broker 地址"
+        fix: "改为从环境变量 KAFKA_BOOTSTRAP_SERVERS 读取"
+        grep_pattern: "bootstrap.servers.*=.*['\"][0-9]"
+        file_glob: "*.py,*.ts,*.go,*.properties"
+
+orm:
+  sqlalchemy:
+    language: python
+    coding_rules:
+      - "禁止裸 SQL 字符串（使用 ORM 方法）"
+      - "数据库操作统一通过 Repository 层，禁止在 Service 层直接调用 ORM 方法"
+      - "禁止在循环中执行数据库查询（N+1 问题）"
+    script_checks:
+      - rule_id: ORM_001
+        description: "发现疑似裸 SQL 字符串"
+        fix: "改用 ORM 方法（如 session.query() / session.execute(select(...))）"
+        grep_pattern: "execute\\(\\s*['\"]SELECT"
+        file_glob: "*.py"
+      - rule_id: ORM_002
+        description: "发现 cursor.execute 调用（裸 SQL）"
+        fix: "改用 ORM 方法"
+        grep_pattern: "cursor\\.execute("
+        file_glob: "*.py"
+
+  peewee:
+    language: python
+    coding_rules:
+      - "禁止裸 SQL 字符串（使用 ORM 方法）"
+      - "数据库操作统一通过 Repository 层，禁止在 Service 层直接调用 ORM 方法"
+      - "禁止在循环中执行数据库查询（N+1 问题）"
+    script_checks:
+      - rule_id: ORM_001
+        description: "发现疑似裸 SQL 字符串"
+        fix: "改用 ORM 方法（如 Model.select() / Model.insert()）"
+        grep_pattern: "execute\\(\\s*['\"]SELECT"
+        file_glob: "*.py"
+      - rule_id: ORM_002
+        description: "发现 cursor.execute 调用（裸 SQL）"
+        fix: "改用 ORM 方法"
+        grep_pattern: "cursor\\.execute("
+        file_glob: "*.py"
+
+  prisma:
+    language: typescript
+    coding_rules:
+      - "禁止直接使用 $queryRaw 执行裸 SQL（除非有充分理由并注释说明）"
+      - "PrismaClient 实例全局单例，禁止在请求处理中 new PrismaClient()"
+    script_checks:
+      - rule_id: ORM_001
+        description: "发现 $queryRaw 调用（裸 SQL）"
+        fix: "改用 Prisma 模型方法，如 prisma.user.findMany()"
+        grep_pattern: "\\$queryRaw"
+        file_glob: "*.ts"
+
+  gorm:
+    language: go
+    coding_rules:
+      - "禁止 Raw SQL（使用 GORM 链式方法）"
+      - "DB 实例通过依赖注入传递，禁止全局变量"
+    script_checks:
+      - rule_id: ORM_001
+        description: "发现 db.Raw() 或 db.Exec() 调用（裸 SQL）"
+        fix: "改用 GORM 链式方法"
+        grep_pattern: "db\\.(Raw|Exec)("
+        file_glob: "*.go"
+
+infrastructure:
+  docker:
+    security_rules:
+      - "Dockerfile 禁止将 .env 文件 COPY 进镜像"
+      - "禁止在 Dockerfile 中使用 ENV 指令设置真实密钥"
+      - "容器不得以 root 用户运行（使用 USER 指令）"
+    script_checks:
+      - rule_id: DOCKER_001
+        description: "Dockerfile 中发现 ENV 设置密钥类变量"
+        fix: "改为运行时通过 --env-file 或 K8s Secret 注入"
+        grep_pattern: "ENV.*(KEY|SECRET|PASSWORD|TOKEN)"
+        file_glob: "Dockerfile*"
+
+  kubernetes:
+    security_rules:
+      - "禁止在代码中硬编码 K8s Namespace / ClusterIP / ServiceAccount Token"
+      - "密钥必须使用 K8s Secret，通过环境变量挂载"
+      - "禁止在代码中硬编码 kubectl 命令的 --context 参数"
+    script_checks:
+      - rule_id: K8S_001
+        description: "发现疑似硬编码 K8s Service 地址或 Namespace"
+        fix: "改为从环境变量读取（NAMESPACE / SERVICE_HOST 等）"
+        grep_pattern: "\\.svc\\.cluster\\.local"
+        file_glob: "*.py,*.ts,*.go,*.java"
+
+frameworks:
+  express:
+    language: typescript
+    coding_rules:
+      - "错误处理中间件必须是最后一个 middleware（app.use(errorHandler) 放在所有路由之后）"
+      - "路由必须通过 Router 模块化，禁止在 app.ts 中直接定义业务路由"
+
+  gin:
+    language: go
+    coding_rules:
+      - "路由分组使用 RouterGroup，禁止在 main() 中注册业务路由"
+      - "统一使用 c.JSON() 返回响应，禁止 c.String() 返回 JSON 字符串"
+
+  fastapi:
+    language: python
+    coding_rules:
+      - "路由必须通过 APIRouter 模块化，禁止在 main.py 中直接定义业务路由"
+      - "依赖注入使用 Depends()，禁止在路由函数中直接实例化 Service"
+
+  spring_boot:
+    language: java
+    coding_rules:
+      - "Controller 只做参数校验和响应封装，业务逻辑必须在 Service 层"
+      - "统一使用 @RestControllerAdvice 处理全局异常，禁止在 Controller 中 try-catch"
+
+testing_frameworks:
+  jest:
+    language: typescript
+    testing_rules:
+      - "使用 describe() 和 it()/test() 组织测试，命名格式：describe('<模块>') > it('<场景> should <预期>')"
+      - "使用 jest.mock() 隔离模块依赖，使用 jest.spyOn() 监听方法调用"
+      - "集成测试放在 tests/integration/，使用 @group integration 标记"
+      - "单元测试覆盖率目标：总体 >= 80%，核心服务层 >= 90%"
+      - "每次测试后使用 afterEach(jest.clearAllMocks) 清理 Mock 状态"
+
+  pytest:
+    language: python
+    testing_rules:
+      - "使用 conftest.py 定义共享 Fixture，避免在测试文件中重复初始化"
+      - "参数化测试使用 @pytest.mark.parametrize"
+      - "异步测试使用 @pytest.mark.asyncio"
+      - "单元测试覆盖率目标：总体 >= 80%，核心业务层 >= 90%"
+
+config_management:
+  python_dotenv:
+    language: python
+    coding_rules:
+      - "配置读取必须通过统一配置模块（如 src/config/settings.py），禁止在业务代码中直接调用 os.getenv()"
+      - "启动时校验必填环境变量，缺失时 fail-fast 而非运行时报错"
+    script_checks:
+      - rule_id: CFG_001
+        description: "业务代码直接调用 os.getenv()（应通过配置模块统一读取）"
+        fix: "改为从配置模块（如 settings.py）中的配置对象读取"
+        grep_pattern: "os\\.getenv("
+        file_glob: "*.py"
+        exclude_glob: "settings.py,config.py,*/config/*.py,*/config/settings.py"
+
+  dotenv:
+    language: typescript
+    coding_rules:
+      - "配置读取必须通过统一配置模块（如 src/config/index.ts），禁止在业务代码中直接访问 process.env"
+    script_checks:
+      - rule_id: CFG_001
+        description: "业务代码直接访问 process.env（应通过配置模块统一读取）"
+        fix: "改为从 src/config/index.ts 中的配置对象读取"
+        grep_pattern: "process\\.env\\["
+        file_glob: "*.ts"
+        exclude_glob: "*/config/*.ts,*/config/index.ts"
+
+  viper:
+    language: go
+    coding_rules:
+      - "配置读取必须通过 internal/config/ 统一模块，禁止在业务代码中直接调用 viper.Get*()"
+    script_checks:
+      - rule_id: CFG_001
+        description: "业务代码直接调用 viper.Get*()（应通过配置模块统一读取）"
+        fix: "改为从 internal/config/ 中的配置结构体字段读取"
+        grep_pattern: "viper\\.(Get|GetString|GetInt|GetBool|GetDuration)("
+        file_glob: "*.go"
+        exclude_glob: "*/config/*.go,internal/config/*.go"
+
+  spring_config:
+    language: java
+    coding_rules:
+      - "配置属性必须通过 @ConfigurationProperties 绑定到配置类，禁止直接使用 @Value 在业务类中注入"
+
+# 通用安全规则：所有项目均适用，无需选择
+universal:
+  security_rules:
+    - "禁止在代码中硬编码任何 API Key / Secret / Token"
+    - ".env 文件禁止提交 git，使用 .env.example 作为模板"
+    - "敏感配置统一从环境变量读取，通过配置模块（config/settings）统一管理"
+  script_checks:
+    - rule_id: SEC_001
+      description: "发现疑似硬编码 API Key（长随机字符串赋值）"
+      fix: "改为从环境变量读取"
+      grep_pattern: "(API_KEY|SECRET|TOKEN|PASSWORD)\\s*=\\s*['\"][a-zA-Z0-9_\\-]{16,}"
+      file_glob: "*.py,*.ts,*.go,*.java,*.js"
+    - rule_id: SEC_002
+      description: ".env 文件包含真实密钥（检查是否意外暂存）"
+      fix: "将 .env 加入 .gitignore，密钥放入 .env.example 占位符"
+      grep_pattern: "^[A-Z_]+=.{8,}"
+      file_glob: ".env"
+      exclude_glob: ".env.example,.env.*.example"
