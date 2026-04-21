@@ -6,34 +6,61 @@ set -e
 
 SKILLS_DIR="$(cd "$(dirname "$0")/skills" && pwd)"
 TARGET_DIR="$HOME/.claude/skills"
+CLAUDE_DIR="$HOME/.claude"
+BACKUP_CMD="cp -r \"$CLAUDE_DIR\" \"${CLAUDE_DIR}_backup_$(date +%Y%m%d_%H%M%S)\""
 
 echo "🎼 claude-code-maestro 安装开始"
-echo "来源：$SKILLS_DIR"
-echo "目标：$TARGET_DIR"
 echo ""
 
-# 检查 Claude Code 是否已安装（.claude 目录存在）
-if [ ! -d "$HOME/.claude" ]; then
+# 检查 Claude Code 是否已安装
+if [ ! -d "$CLAUDE_DIR" ]; then
   echo "❌ 未检测到 ~/.claude 目录，请先安装 Claude Code。"
   echo "   https://claude.ai/code"
   exit 1
 fi
 
+# 检查 skills/ 目录是否存在
+if [ ! -d "$SKILLS_DIR" ]; then
+  echo "❌ 未找到 skills/ 目录，请在项目根目录下执行此脚本。"
+  exit 1
+fi
+
+# 检测哪些 skill 已存在
+existing_skills=()
+for skill_dir in "$SKILLS_DIR"/*/; do
+  skill_name="$(basename "$skill_dir")"
+  if [ -d "$TARGET_DIR/$skill_name" ]; then
+    existing_skills+=("$skill_name")
+  fi
+done
+
+# 如果有已存在的 skill，统一提醒备份
+if [ ${#existing_skills[@]} -gt 0 ]; then
+  echo "⚠️  检测到以下 skill 在 ~/.claude/skills/ 中已存在："
+  echo ""
+  for name in "${existing_skills[@]}"; do
+    echo "   • $name"
+  done
+  echo ""
+  echo "安装将覆盖上述目录。建议先备份你的 ~/.claude/ 目录："
+  echo ""
+  echo "   $BACKUP_CMD"
+  echo ""
+  read -r -p "已备份或确认不需要备份，继续安装？(y/N) " confirm
+  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "已取消安装。"
+    exit 0
+  fi
+  echo ""
+fi
+
 mkdir -p "$TARGET_DIR"
 
-# 逐个复制 skill，遇到同名目录时询问是否覆盖
+# 复制所有 skill
 for skill_dir in "$SKILLS_DIR"/*/; do
   skill_name="$(basename "$skill_dir")"
   target_skill="$TARGET_DIR/$skill_name"
-
-  if [ -d "$target_skill" ]; then
-    read -r -p "⚠️  $skill_name 已存在，覆盖？(y/N) " confirm
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-      echo "   跳过 $skill_name"
-      continue
-    fi
-  fi
-
+  rm -rf "$target_skill"
   cp -r "$skill_dir" "$target_skill"
   echo "   ✅ $skill_name"
 done
