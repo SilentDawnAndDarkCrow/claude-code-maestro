@@ -79,17 +79,20 @@ description: >
 ### Step 0：模式检测
 
 ```
-if 项目根目录存在 .claude/ 目录：
-    → Mode C：补充模式
+if 项目根目录存在 .claude/rules/specifications/ 目录：
+    → Mode C：补充模式（Harness 已初始化）
 
-else if 项目根目录存在源码文件（非空项目）：
+else if 项目根目录存在任意 manifest 文件或源码目录（非空项目）：
     → Mode B：旧项目接入
 
 else：
     → Mode A：全新项目
 ```
 
-判断"非空项目"的依据：存在任意 manifest 文件（见 Step B1 列表）或 src/、app/ 等源码目录。
+> 使用 `.claude/rules/specifications/` 而非 `.claude/` 作为判断依据：
+> Claude Code 本身也会创建 `.claude/` 目录，仅凭 `.claude/` 存在无法判断 Harness 是否已初始化。
+>
+> 判断"非空项目"的依据：存在任意 manifest 文件（见 Step B1 列表）或 `src/`、`app/` 等源码目录。
 
 ---
 
@@ -200,13 +203,16 @@ Agent 3：tests/ 边缘用例（fixtures、conftest）+ src/utils/ 或工具层
 
 | 一致性 | 置信度 | 展示方式 |
 |--------|--------|---------|
-| 三者一致 | 高 | 直接列为规范 |
+| 三者一致 | 高 | 直接列为规范候选 |
 | 两者一致 | 中 | 标注"大部分代码遵循，存在例外" |
 | 三者分歧 | 低 | 标注"代码库存在不一致，需人工决策" |
 | 某 agent 独有发现 | 参考 | 标注"仅在 X 区域发现" |
 
+> **置信度是采样范围内的判断，不是全局保证。** 三方一致只说明三个样本集中未见例外，
+> 不排除代码库其他区域存在违反。所有提取结果均需用户在 Step B5 最终确认后才成为规范。
+>
 > 低置信度和分歧项是旧项目历史债务的集中体现，需要用户在此明确做出选择：
-> 采纳哪种约定，或接受现有不一致。
+> 采纳哪种约定，或接受现有不一致并标注为"历史遗留，新代码遵循 X"。
 
 ---
 
@@ -320,7 +326,7 @@ tests/intg/   → testing.md
 询问哪些工具已安装，是否纳入 `review_checks.py`。
 未安装的工具生成单行 TODO 注释：`# TODO: install {tool} — 安装后在此处补充调用`。
 
-### Step 3.5：（可选）增量质量门控 Hook
+### Step 4.5：（可选）增量质量门控 Hook
 
 > 本步骤可跳过。跳过后仍可手动添加。
 
@@ -364,6 +370,8 @@ tests/intg/   → testing.md
 
 Step 6 将根据这两个集合生成对应 Hook 文件。
 
+> Step 4.5 可在 Mode C（补充模式）中通过选项 E 重新进入，用于首次跳过后的追加配置。
+
 ---
 
 ## Mode C：已有 Harness 的补充
@@ -387,6 +395,7 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
   B. 新增目录并分配规范
   C. 修改架构约定（异常位置 / 配置模块路径）
   D. 其他
+  E. 重新配置增量质量门控 Hook（初始化时跳过，现在补设）
 ```
 
 **2. 根据用户选择执行补充动作**
@@ -396,6 +405,7 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 | A（新技术栈组件）| 询问新组件，由 LLM 生成对应规范条目，追加到规范文件（不覆盖已有内容）；将新 script_checks 追加到 review_checks.py |
 | B（新增目录）| 询问目录名称和职责，更新路径映射表，重新生成 impl-worker.md 和 lint-checker.md 的映射表区间 |
 | C（修改架构约定）| 仅更新 coding.md 中的对应约定行，以及 review_checks.py 中对应的检查 |
+| E（重新配置 Hook）| 进入完整的 Step 4.5 子流程，生成或替换 post-tool-use-file-quality-check.sh 和 task-completed-quality-check.sh |
 
 **3. 预览与确认**
 
@@ -415,10 +425,17 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 
 向用户展示将要生成的内容摘要：
 
-1. **规范文件摘要**：每个 spec 文件的规则条数和关键条目
+1. **规范文件摘要**：每个 spec 文件的规则条数和关键条目，**标注每条来源**：
+   - `[用户确认]` — Mode A 用户逐步确认的约定
+   - `[代码库推断·高置信]` — Mode B 三方一致的提取结果
+   - `[代码库推断·中置信]` — Mode B 多数一致，存在例外
+   - `[代码库推断·待确认]` — Mode B 分歧项，用户尚未做出选择
 2. **路径映射表**：完整的目录 → 规范文件对应关系
 3. **脚本检查项**：`review_checks.py` 将包含的检查列表
 4. **VERSION 初始值**：默认 `1.0`，用户可修改
+
+> **[待确认] 条目必须在此步骤由用户做出决策后才能进入 Step 6。**
+> 生成的规范文件不保留置信度标注，用户在此步骤完成最终确认后，所有条目均视为已确认规范。
 
 用户确认后执行 Step 6。
 
@@ -452,38 +469,46 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 
 ### testing.md 结构说明
 
-testing.md 分为两个区：
+testing.md 分为两个区，用 HTML 注释标记边界（供 lint-checker 和 harness-init 补充模式定位）：
 
 **规则区**（可被 script_check 检验的强制约定）：
 ```markdown
+<!-- SPEC_START -->
 ## 测试规范
 
 - 测试文件命名：test_{模块名}.py
 - 每个测试函数只测一个行为
 - 禁止在测试中 sleep()
 - ...
+<!-- SPEC_END -->
 ```
 
 **测试模式参考区**（供 test-writer / impl-worker 按上下文选用，不强制检验）：
 ```markdown
+<!-- PATTERNS_START -->
 ## 测试模式参考
+
+> 本区内容为设计模式指引，不做规范检验。test-writer 和 impl-worker 应读取本区
+> 内容后根据具体场景选用，而非机械照搬。本区由 harness-init 初始化后，
+> test-writer 在生成复杂测试场景后可追加新模式。
 
 ### FastAPI 异常测试
 使用 `raise_server_exceptions=False` 测试 5xx handler，
 避免 TestClient 将服务端异常重新抛出到测试层。
-示例：...
 
 ### Celery 任务测试
 三种模式及适用场景：
 1. CELERY_TASK_ALWAYS_EAGER — 同步执行，适合端到端流程测试
-2. unittest.mock.patch — mock task 对象，适合单元隔离测试
+2. unittest.mock.patch — mock task 对象，适合单元隔离测试；patch 作用于使用处而非定义处
 3. celery.contrib.pytest fixture — 适合需要真实 worker 行为的集成测试
-注意：patch 应作用于任务的使用处，而非定义处。
 
 ### pytest-asyncio
 推荐 asyncio_mode = "auto"，避免每个异步测试函数手动标注 @pytest.mark.asyncio。
-...
+<!-- PATTERNS_END -->
 ```
+
+> lint-checker 只检查 `SPEC_START / SPEC_END` 区间内的规则，不检查 `PATTERNS_START / PATTERNS_END` 区间。
+> harness-init 补充模式追加规则时，同样只写入 SPEC 区间，不覆盖 PATTERNS 区间。
 
 ---
 
@@ -542,12 +567,13 @@ testing.md 分为两个区：
     "TaskCreated": [{"hooks": [{"type": "command", "command": "bash .claude/hooks/task-created-check-task-list.sh"}]}]
   },
   "permissions": {
-    "allow": ["Read(**)", "Write(upgrade_plan/**)", "Write(.claude/**)", "Write({SRC_DIR}/**)", "Bash(git *)", "Bash({TEST_CMD} *)", "Bash(python3 *)"]
+    "allow": ["Read(**)", "Write(upgrade_plan/**)", "Write(.claude/rules/**)", "Write(.claude/agents/**)", "Write({SRC_DIR}/**)", "Bash(git *)", "Bash({TEST_CMD} *)", "Bash(python3 *)"]
   }
 }
 ```
 
 permissions 说明：
+- `Write(.claude/rules/**)` 和 `Write(.claude/agents/**)` 允许 lint-checker 和 impl-worker 操作规范文件和 agent 定义；不使用 `Write(.claude/**)` 以避免 agent 在运行期间篡改 hooks 或 settings.json
 - `Write({SRC_DIR}/**)` 根据 Step 2 确认的源码根目录调整
 - `Bash({TEST_CMD} *)` 根据测试框架调整：pytest / npx jest / go test / php artisan test 等
 - `Bash(python3 *)` 所有项目均保留，用于执行 `review_checks.py`
