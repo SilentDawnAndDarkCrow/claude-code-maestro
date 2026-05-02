@@ -7,67 +7,75 @@ set -e
 SKILLS_DIR="$(cd "$(dirname "$0")/skills" && pwd)"
 TARGET_DIR="$HOME/.claude/skills"
 CLAUDE_DIR="$HOME/.claude"
-BACKUP_CMD="cp -r \"$CLAUDE_DIR\" \"${CLAUDE_DIR}_backup_$(date +%Y%m%d_%H%M%S)\""
 
-echo "🎼 claude-code-maestro 安装开始"
+echo "claude-code-maestro 安装开始"
 echo ""
 
 # 检查 Claude Code 是否已安装
 if [ ! -d "$CLAUDE_DIR" ]; then
-  echo "❌ 未检测到 ~/.claude 目录，请先安装 Claude Code。"
+  echo "[ERROR] 未检测到 ~/.claude 目录，请先安装 Claude Code。"
   echo "   https://claude.ai/code"
   exit 1
 fi
 
 # 检查 skills/ 目录是否存在
 if [ ! -d "$SKILLS_DIR" ]; then
-  echo "❌ 未找到 skills/ 目录，请在项目根目录下执行此脚本。"
+  echo "[ERROR] 未找到 skills/ 目录，请在项目根目录下执行此脚本。"
   exit 1
-fi
-
-# 检测哪些 skill 已存在
-existing_skills=()
-for skill_dir in "$SKILLS_DIR"/*/; do
-  skill_name="$(basename "$skill_dir")"
-  if [ -d "$TARGET_DIR/$skill_name" ]; then
-    existing_skills+=("$skill_name")
-  fi
-done
-
-# 如果有已存在的 skill，统一提醒备份
-if [ ${#existing_skills[@]} -gt 0 ]; then
-  echo "⚠️  检测到以下 skill 在 ~/.claude/skills/ 中已存在："
-  echo ""
-  for name in "${existing_skills[@]}"; do
-    echo "   • $name"
-  done
-  echo ""
-  echo "安装将覆盖上述目录。建议先备份你的 ~/.claude/ 目录："
-  echo ""
-  echo "   $BACKUP_CMD"
-  echo ""
-  read -r -p "已备份或确认不需要备份，继续安装？(y/N) " confirm
-  if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-    echo "已取消安装。"
-    exit 0
-  fi
-  echo ""
 fi
 
 mkdir -p "$TARGET_DIR"
 
-# 复制所有 skill
+# 逐个安装，已存在则询问是否覆盖
+updated=()
+skipped=()
+installed=()
+
 for skill_dir in "$SKILLS_DIR"/*/; do
   skill_name="$(basename "$skill_dir")"
   target_skill="$TARGET_DIR/$skill_name"
-  rm -rf "$target_skill"
-  cp -r "$skill_dir" "$target_skill"
-  echo "   ✅ $skill_name"
+
+  if [ -d "$target_skill" ]; then
+    read -r -p "   [已存在] $skill_name — 覆盖？(y/N) " confirm
+    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
+      rm -rf "$target_skill"
+      cp -r "$skill_dir" "$target_skill"
+      updated+=("$skill_name")
+    else
+      skipped+=("$skill_name")
+    fi
+  else
+    cp -r "$skill_dir" "$target_skill"
+    installed+=("$skill_name")
+  fi
 done
 
 echo ""
-echo "🎼 安装完成！重启 Claude Code 后即可使用以下 skill："
+
+if [ ${#installed[@]} -gt 0 ]; then
+  echo "新安装："
+  for name in "${installed[@]}"; do
+    echo "   [OK] $name"
+  done
+fi
+
+if [ ${#updated[@]} -gt 0 ]; then
+  echo "已覆盖更新："
+  for name in "${updated[@]}"; do
+    echo "   [OK] $name"
+  done
+fi
+
+if [ ${#skipped[@]} -gt 0 ]; then
+  echo "已跳过："
+  for name in "${skipped[@]}"; do
+    echo "   [--] $name"
+  done
+fi
+
 echo ""
-echo "   /harness-init    — 初始化新项目的 Multi-Agent 开发环境"
+echo "安装完成！重启 Claude Code 后即可使用以下 skill："
+echo ""
+echo "   /harness-init    — 初始化项目，生成规范文件、hook 和 agent 定义"
 echo "   /analyst-agent   — 需求分析，划分可测试的业务单元"
-echo "   /orchestrator    — 多 Agent 并行调度：开发 → 测试 → 规范检查"
+echo "   /orchestrator    — 真正并行调度：开发 -> 测试 -> 规范检查（使用项目级 agents）"

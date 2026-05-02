@@ -2,10 +2,10 @@
 name: harness-init
 description: >
   新项目初始化 skill。在全新项目目录下，引导用户逐步确认技术栈、目录结构、编码约定、
-  质量工具，然后自动生成 Multi-Agent Harness v2 所需的全套配置文件。
+  质量工具，然后自动生成 Multi-Agent Harness 所需的全套配置文件：
+  CLAUDE.md、规范文件、hook 脚本、项目级 agent 定义（.claude/agents/）。
   触发条件：用户说"初始化新项目"、"搭建项目harness"、"setup harness"、"新项目配置"，
-  或明确运行 /harness-init。生成产物保证 dev-agent/review-agent SKILL.md 结构与标准模板完全一致，
-  唯一可变部分为路径映射表。
+  或明确运行 /harness-init。
 ---
 
 # harness-init — 项目 Harness 初始化
@@ -18,11 +18,17 @@ description: >
 |------|---------|------|
 | 技术栈规则（人类可读）| `~/.claude/skills/harness-init/references/tech-stack-rules.md` | Step 1 向用户推荐选项；理解规则设计意图 |
 | 技术栈规则（机器可读）| `~/.claude/skills/harness-init/references/tech-stack-rules.yaml` | Step 6 解析规则、生成规范文件和 review_checks.py |
-| dev-agent 模板 | `~/.claude/skills/harness-init/references/dev-agent-template.md` | Step 6 生成 dev-agent/SKILL.md |
-| review-agent 模板 | `~/.claude/skills/harness-init/references/review-agent-template.md` | Step 6 生成 review-agent/SKILL.md |
 | 通用 hook 文件（5个） | `~/.claude/skills/harness-init/references/hooks/*.sh` | Step 6 复制到新项目 .claude/hooks/ |
+| agent 专用 hook | `~/.claude/skills/harness-init/references/hooks/block-test-modification.sh` | Step 6 复制，impl-worker 专用，阻止修改测试文件 |
+| agent 专用 hook | `~/.claude/skills/harness-init/references/hooks/block-status-read.sh` | Step 6 复制，lint-checker 专用，阻止读取测试结果 |
 | review_checks 骨架 | `~/.claude/skills/harness-init/references/review_checks_template.py` | Step 6 生成 review_checks.py 的接口骨架 |
 | .gitignore 模板 | `~/.claude/skills/harness-init/references/gitignore-template` | Step 6 原样复制为项目 .gitignore |
+| test-writer agent 模板 | `~/.claude/skills/harness-init/references/agents/test-writer-template.md` | Step 6 生成 .claude/agents/test-writer.md |
+| impl-worker agent 模板 | `~/.claude/skills/harness-init/references/agents/impl-worker-template.md` | Step 6 生成 .claude/agents/impl-worker.md |
+| test-runner agent 模板 | `~/.claude/skills/harness-init/references/agents/test-runner-template.md` | Step 6 生成 .claude/agents/test-runner.md |
+| integration-test agent 模板 | `~/.claude/skills/harness-init/references/agents/integration-test-template.md` | Step 6 生成 .claude/agents/integration-test.md |
+| interface-test agent 模板 | `~/.claude/skills/harness-init/references/agents/interface-test-template.md` | Step 6 生成 .claude/agents/interface-test.md |
+| lint-checker agent 模板 | `~/.claude/skills/harness-init/references/agents/lint-checker-template.md` | Step 6 生成 .claude/agents/lint-checker.md |
 
 ---
 
@@ -48,16 +54,22 @@ description: >
     │   ├── task-started-update-task-list.sh   ← 通用：任务状态同步（从模板复制）
     │   ├── task-completed-update-task-list.sh ← 通用：任务状态同步（从模板复制）
     │   ├── task-created-check-task-list.sh    ← 通用：任务创建检查（从模板复制）
+    │   ├── block-test-modification.sh         ← impl-worker 专用：阻止修改测试文件（从模板复制）
+    │   ├── block-status-read.sh               ← lint-checker 专用：阻止读取测试结果（从模板复制）
     │   ├── review_checks.py                   ← 项目特定：确定性脚本检查层（由骨架 + 技术栈生成）
     │   ├── [可选] post-tool-use-file-quality-check.sh  ← 文件编辑后即时规则检查（Step 3.5 用户确认后生成）
     │   └── [可选] task-completed-quality-check.sh      ← 任务完成时规则检查（Step 3.5 用户确认后生成）
-    └── skills/
-        ├── dev-agent/SKILL.md                 ← 从模板生成，填入路径映射表
-        └── review-agent/SKILL.md              ← 从模板生成，填入路径映射表
+    └── agents/                                ← 项目级 Claude Code agent 定义（orchestrator 调用）
+        ├── test-writer.md                     ← 测试用例生成（从模板生成，填入路径和规范）
+        ├── impl-worker.md                     ← 代码实现，isolation:worktree（从模板生成）
+        ├── test-runner.md                     ← 单元测试执行（从模板生成）
+        ├── integration-test.md                ← 集成测试执行（从模板生成）
+        ├── interface-test.md                  ← HTTP 接口测试（从模板生成）
+        └── lint-checker.md                    ← 规范检查（从模板生成，填入路径和规范）
 ```
 
-> dev-agent 和 review-agent 的 SKILL.md 内容与标准模板逐字相同，唯一差异是路径映射表。
-> 项目特定规则全部存放在规范文件中，不写入 SKILL.md。
+> 所有 agent 文件内容与标准模板逐字相同，唯一差异是路径映射表和目录占位符（`{SRC_DIR}`、`{TEST_DIR}` 等）。
+> 项目特定规则全部存放在规范文件中，不写入 agent 文件。
 
 ---
 
@@ -87,7 +99,7 @@ else:
 - `.claude/rules/specifications/coding.md` → 当前编码规范条目数
 - `.claude/rules/specifications/security.md` → 当前安全规范条目数
 - `.claude/rules/specifications/testing.md` → 当前测试规范条目数
-- `.claude/skills/dev-agent/SKILL.md` → 当前路径映射表（`PATH_MAPPING_TABLE_START` 到 `PATH_MAPPING_TABLE_END` 之间的内容）
+- `.claude/agents/impl-worker.md` → 当前路径映射表（`PATH_MAPPING_TABLE_START` 到 `PATH_MAPPING_TABLE_END` 之间的内容）
 
 向用户展示摘要，例如：
 
@@ -111,7 +123,7 @@ else:
 | 用户选择 | 执行动作 |
 |---------|---------|
 | A（新技术栈组件）| 从 Step 1 的技术栈列表中只询问新增部分，读取 `tech-stack-rules.yaml` 获取对应规则，追加到现有规范文件（不覆盖已有内容）；将新 `script_checks` 追加到 `review_checks.py`。若项目已存在 `post-tool-use-file-quality-check.sh` 或 `task-completed-quality-check.sh`，额外询问用户是否将新增规则纳入这两个 Hook，若是则追加对应 grep 块（规则同样只从新增的 `script_checks` 中选取）|
-| B（新增目录）| 询问新目录名称和职责，按路径映射规则分配规范文件，重新生成 dev-agent/SKILL.md 和 review-agent/SKILL.md 的路径映射表（用更新后的完整表替换占位符区间）|
+| B（新增目录）| 询问新目录名称和职责，按路径映射规则分配规范文件，重新生成 `.claude/agents/impl-worker.md` 和 `.claude/agents/lint-checker.md` 的路径映射表（用更新后的完整表替换占位符区间）|
 | C（修改架构约定）| 仅更新 `coding.md` 中的对应约定行，以及 `review_checks.py` 中对应的绕过检查 |
 
 **3. 预览与确认**
@@ -145,6 +157,34 @@ else:
 | 基础设施 | Docker / K8s / 无 |
 
 每类可多选。完成后向用户展示汇总，确认无误后继续。
+
+### Step 1.5：运行时关键约定（按技术栈自动触发）
+
+在 Step 1 汇总确认后，根据用户所选技术栈，**自动追问以下关键细节**。这些信息将写入 `testing.md` 规范，避免 agent 在生成代码时触发可预见的兼容性问题。
+
+> 只询问与用户所选技术栈相关的条目，不相关的跳过。
+
+| 触发条件 | 追问内容 | 写入位置 |
+|---------|---------|---------|
+| 选择了 Python | Python 最低兼容版本？（如 3.9 / 3.10 / 3.11 / 3.12）| `testing.md`，明确禁止使用高版本专属语法（如 `match` 语句需要 3.10+，`ParamSpec` 需要 3.10+） |
+| 选择了 FastAPI + 测试框架 | TestClient 使用方式？`TestClient(app)` 还是 `AsyncClient`？异常透传参数名用 `raise_server_exceptions` 还是 `raise_app_exceptions`？ | `testing.md` |
+| 选择了 Celery | 测试中 Celery 任务如何执行？`CELERY_TASK_ALWAYS_EAGER=True`（同步执行）/ `unittest.mock.patch` 直接 mock task / `celery.contrib.pytest` fixture？ | `testing.md` |
+| 选择了异步框架（FastAPI/aiohttp/asyncio）| 测试中是否使用 `pytest-asyncio`？`asyncio_mode` 设置为 `auto` 还是 `strict`？ | `testing.md` |
+| 选择了 SQLAlchemy | 测试数据库使用真实 DB 还是 SQLite in-memory？事务回滚策略？ | `testing.md` |
+
+**追问格式示例（Python 版本）：**
+
+```
+检测到你选择了 Python。请确认：
+
+最低兼容 Python 版本？（直接输入或选择）
+  A. 3.9（最保守，禁止 match 语句、TypeAlias、ParamSpec 等 3.10+ 语法）
+  B. 3.10
+  C. 3.11
+  D. 3.12+（最新）
+```
+
+这些约定写入 `testing.md` 后，impl-worker 和 test-writer 会在生成代码前读取规范，从源头避免兼容性循环。
 
 ### Step 2：目录结构确认
 
@@ -289,8 +329,11 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 3. `.claude/rules/specifications/coding.md`
 4. `.claude/rules/specifications/testing.md`
 5. `.claude/rules/specifications/security.md`
-6. `.claude/hooks/review_checks.py`（读取 `references/review_checks_template.py` 作为骨架，按技术栈填入 `grep_check()` 调用）
-7. 复制 5 个通用 hook 文件到 `.claude/hooks/`（依次 Read `references/hooks/` 下每个 .sh 文件，Write 到目标路径，内容不做任何修改）
+6. `.claude/hooks/review_checks.py`（读取 `~/.claude/skills/harness-init/references/review_checks_template.py` 作为骨架，按技术栈填入 `grep_check()` 调用）
+7. 复制 7 个 hook 文件到 `.claude/hooks/`（依次 Read `~/.claude/skills/harness-init/references/hooks/` 下每个 .sh 文件，Write 到目标路径，内容不做任何修改）：
+   - 5 个通用 hook：pre-tool-use-check-tasks.sh、post-tool-use-check-completion.sh、task-started-update-task-list.sh、task-completed-update-task-list.sh、task-created-check-task-list.sh
+   - 2 个 agent 专用 hook：block-test-modification.sh（impl-worker 使用）、block-status-read.sh（lint-checker 使用）
+   - 复制后，将 block-test-modification.sh 中的 `{{TEST_DIR}}` 占位符替换为 Step 2 确认的测试目录路径
 7b. （若 Step 3.5 用户选择了 PostToolUse 规则）生成 `.claude/hooks/post-tool-use-file-quality-check.sh`：
    - 脚本骨架：读取 stdin JSON，提取 `tool_name` 和 `file_path`，只处理 Write/Edit，只处理已存在的文件
    - 对每条 `post_tool_use_rules[]` 中的规则，生成一段 if 块：
@@ -318,17 +361,42 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
    - 脚本末尾：`[ "$VIOLATIONS" -gt 0 ]` 则输出汇总并 `exit 2`，否则 `exit 0`
    - 文件头部注释注明：规则来源为 `review_checks.py`，与全局检查保持一致
 8. 生成 `.claude/settings.json`（注册所有 hook）
-9. `.claude/skills/dev-agent/SKILL.md`（读模板 → 替换路径映射表）
-10. `.claude/skills/review-agent/SKILL.md`（读模板 → 替换路径映射表）
-11. `.gitignore`（Read `references/gitignore-template`，原样 Write 到项目根目录）
-12. `.env.example`（从 yaml 各组件的 `security_rules` 中提取环境变量名，生成占位符模板）
+9. **[必须执行] 生成 6 个 agent 文件到 `.claude/agents/`**（见下方"生成 agent 文件"说明）
+10. `.gitignore`（Read `~/.claude/skills/harness-init/references/gitignore-template`，原样 Write 到项目根目录）
+11. `.env.example`（从 yaml 各组件的 `security_rules` 中提取环境变量名，生成占位符模板）
 
-> **生成 dev-agent / review-agent SKILL.md：**
-> 读取 `~/.claude/skills/harness-init/references/dev-agent-template.md` 和 `~/.claude/skills/harness-init/references/review-agent-template.md`，
-> 将 `<!-- PATH_MAPPING_TABLE_START -->` 与 `<!-- PATH_MAPPING_TABLE_END -->` 之间的**全部内容（包括 `{PATH_MAPPING_TABLE}` 占位符行本身）**
-> 替换为 Step 2 生成的路径映射表（Markdown 表格行格式，如 `| src/api/ | coding.md |`）。
-> `<!-- PATH_MAPPING_TABLE_START -->` 和 `<!-- PATH_MAPPING_TABLE_END -->` 这两行注释**必须保留**，供补充模式定位区间。
-> 其余内容**原样保留**。
+> **[重要] 第 9 步是核心产物**：`.claude/agents/` 目录是 orchestrator 派发 subagent 的基础，缺少此目录会导致 /orchestrator 完全无法工作。必须在第 10、11 步之前确认所有 6 个 agent 文件已写入成功。
+
+> **生成 agent 文件（Step 9）：**
+>
+> 对以下 6 个模板文件，依次 Read → 替换占位符 → Write 到 `.claude/agents/`：
+>
+> | 模板文件（绝对路径） | 生成文件 | 特殊替换 |
+> |---------|---------|---------|
+> | `~/.claude/skills/harness-init/references/agents/test-writer-template.md` | `.claude/agents/test-writer.md` | `{SRC_DIR}`、`{TEST_DIR}` |
+> | `~/.claude/skills/harness-init/references/agents/impl-worker-template.md` | `.claude/agents/impl-worker.md` | `{SRC_DIR}`、`{TEST_DIR}`、路径映射表 |
+> | `~/.claude/skills/harness-init/references/agents/test-runner-template.md` | `.claude/agents/test-runner.md` | `{SRC_DIR}`、`{TEST_DIR}` |
+> | `~/.claude/skills/harness-init/references/agents/integration-test-template.md` | `.claude/agents/integration-test.md` | `{SRC_DIR}`、`{TEST_DIR}` |
+> | `~/.claude/skills/harness-init/references/agents/interface-test-template.md` | `.claude/agents/interface-test.md` | `{SRC_DIR}`、`{APP_DIR}` |
+> | `~/.claude/skills/harness-init/references/agents/lint-checker-template.md` | `.claude/agents/lint-checker.md` | `{SRC_DIR}`、路径映射表 |
+>
+> 占位符替换规则：
+> - `{SRC_DIR}`：替换为 Step 2 确认的源码根目录（如 `src`、`app`、`internal`）
+> - `{APP_DIR}`：同 `{SRC_DIR}`（interface-test 用于列举禁止访问的目录）
+> - `{TEST_DIR}`：替换为 Step 2 确认的测试目录（如 `tests`、`__tests__`、`spec`）
+> - 路径映射表：将 `<!-- PATH_MAPPING_TABLE_START -->` 与 `<!-- PATH_MAPPING_TABLE_END -->` 之间的**全部内容（包括 `{PATH_MAPPING_TABLE}` 占位符行本身）**替换为 Step 2 生成的路径映射表（Markdown 表格格式），两行注释标记本身**必须保留**，供补充模式定位区间。
+> - 其余内容**原样保留**。
+>
+> **agent 文件写入完成后，立即逐项验证以下文件存在（用 Bash ls 确认）：**
+> ```
+> .claude/agents/test-writer.md
+> .claude/agents/impl-worker.md
+> .claude/agents/test-runner.md
+> .claude/agents/integration-test.md
+> .claude/agents/interface-test.md
+> .claude/agents/lint-checker.md
+> ```
+> 若任何文件缺失，重新生成该文件后再继续第 10 步。
 >
 > **生成 settings.json：**
 >
@@ -354,14 +422,15 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 >     "TaskCreated": [{"hooks": [{"type": "command", "command": "bash .claude/hooks/task-created-check-task-list.sh"}]}]
 >   },
 >   "permissions": {
->     "allow": ["Read(**)", "Write(upgrade_plan/**)", "Write(.claude/**)", "Write(src/**)", "Bash(git *)", "Bash(pytest *)", "Bash(python3 *)"]
+>     "allow": ["Read(**)", "Write(upgrade_plan/**)", "Write(.claude/**)", "Write({SRC_DIR}/**)", "Bash(git *)", "Bash({TEST_CMD} *)", "Bash(python3 *)"]
 >   }
 > }
 > ```
 > permissions 说明：
-> - `Write(src/**)` 是 dev-agent 写业务代码的必要权限，源码根目录名称（`src/`、`app/`、`internal/` 等）根据 Step 2 确认的目录结构调整
-> - `Bash(pytest *)` 根据测试框架调整：Jest 项目改为 `Bash(npx jest *)`，Go 项目改为 `Bash(go test *)`
+> - `Write({SRC_DIR}/**)` 是 impl-worker 写业务代码的必要权限，`{SRC_DIR}` 根据 Step 2 确认的源码根目录调整（`src/`、`app/`、`internal/` 等）
+> - `Bash({TEST_CMD} *)` 根据测试框架调整：Python 项目为 `Bash(pytest *)`，Jest 项目为 `Bash(npx jest *)`，Go 项目为 `Bash(go test *)`
 > - `Bash(python3 *)` 所有项目均需保留，用于执行 `review_checks.py`
+> - agent 专用 hook（block-test-modification.sh、block-status-read.sh）在各 agent 文件的 frontmatter 中通过 `hooks` 字段注册，**不在项目 settings.json 中注册**
 
 ---
 
@@ -369,7 +438,7 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 
 ### 规则收集
 
-读取 `references/tech-stack-rules.yaml`，对 Step 1 确认的每个技术栈组件，收集对应规则，写入规范文件和 `review_checks.py`。
+读取 `~/.claude/skills/harness-init/references/tech-stack-rules.yaml`，对 Step 1 确认的每个技术栈组件，收集对应规则，写入规范文件和 `review_checks.py`。
 
 > **关于规则的定位**：`tech-stack-rules.yaml` 中的规则（除 `universal` 安全类外）均为**推荐默认值**，代表业界通行约定。它们是项目工程约定，不是 Harness 自身的强制要求。Harness 的职责是执行团队制定的规则，而不是规定团队应当遵守哪些工程规范。
 >
@@ -409,5 +478,9 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
 - `references/tech-stack-rules.yaml` — 机器可读版规则数据，含完整 coding/security/testing/script_checks 字段（**Step 6 生成规范文件和 review_checks.py 时读取**）
 - `references/review_checks_template.py` — review_checks.py 接口骨架，定义调用约定和 JSON 输出格式（**Step 6 生成 review_checks.py 时必须读取**）
 - `references/gitignore-template` — .gitignore 固定内容模板（**Step 6 原样复制**）
-- `references/dev-agent-template.md` — dev-agent SKILL.md 标准模板（Step 6 生成时必须读取）
-- `references/review-agent-template.md` — review-agent SKILL.md 标准模板（Step 6 生成时必须读取）
+- `references/agents/test-writer-template.md` — test-writer agent 模板（Step 9 生成时必须读取）
+- `references/agents/impl-worker-template.md` — impl-worker agent 模板（Step 9 生成时必须读取）
+- `references/agents/test-runner-template.md` — test-runner agent 模板（Step 9 生成时必须读取）
+- `references/agents/integration-test-template.md` — integration-test agent 模板（Step 9 生成时必须读取）
+- `references/agents/interface-test-template.md` — interface-test agent 模板（Step 9 生成时必须读取）
+- `references/agents/lint-checker-template.md` — lint-checker agent 模板（Step 9 生成时必须读取）

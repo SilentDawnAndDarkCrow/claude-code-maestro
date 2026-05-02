@@ -62,12 +62,12 @@ IN_PROCESS=$(grep -c "| in_progress |" "$TASK_LIST" 2>/dev/null || echo "0")
 PENDING=$(grep -c "| pending |" "$TASK_LIST" 2>/dev/null || echo "0")
 
 echo "" >&2
-echo "📋 [TASK_LIST] v${VERSION} 任务进度：${COMPLETED}/${TOTAL} 已完成" >&2
+echo "[LIST] [TASK_LIST] v${VERSION} 任务进度：${COMPLETED}/${TOTAL} 已完成" >&2
 echo "" >&2
 
 # 显示进行中任务
 if [ "$IN_PROCESS" -gt 0 ]; then
-  echo "  🔄 进行中（in_progress）：" >&2
+  echo "  [...] 进行中（in_progress）：" >&2
   grep "| in_progress |" "$TASK_LIST" | while IFS= read -r line; do
     echo "     $line" >&2
   done
@@ -75,7 +75,7 @@ fi
 
 # 显示待处理任务
 if [ "$PENDING" -gt 0 ]; then
-  echo "  ⏳ 待处理（pending）：" >&2
+  echo "  [WAIT] 待处理（pending）：" >&2
   grep "| pending |" "$TASK_LIST" | while IFS= read -r line; do
     echo "     $line" >&2
   done
@@ -83,7 +83,7 @@ fi
 
 # 全部完成时的提示
 if [ "$COMPLETED" -eq "$TOTAL" ] && [ "$TOTAL" -gt 0 ]; then
-  echo "  🎉 所有任务已完成！可以更新 VERSION 并将状态标记为 ✅ 已完成。" >&2
+  echo "  [DONE] 所有任务已完成！可以更新 VERSION 并将状态标记为 [OK] 已完成。" >&2
 fi
 
 echo "" >&2
