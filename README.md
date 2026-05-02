@@ -21,7 +21,7 @@ The root cause is always the same: existing solutions put rules in prompts and r
 Three things no other tool does:
 
 **① Quantified workflow**
-Requirements are broken into discrete units by `analyst-agent`, confirmed with you, and locked. Not Claude improvising — a structured boundary you approved.
+Requirements are broken into discrete units by `analyst`, confirmed with you, and locked. Not Claude improvising — a structured boundary you approved.
 
 **② Independent units run in parallel**
 `orchestrator` uses a dependency graph to schedule execution. Units with no dependencies run simultaneously — 10 modules don't queue, they run at once. The bigger the requirement, the bigger the advantage.
@@ -42,7 +42,7 @@ Every convention agreed upon during `/harness-init` — test requirements, codin
 **With maestro**:
 
 ```
-/analyst-agent   # Describe the requirement, break it into units, confirm with you
+/analyst   # Describe the requirement, break it into units, confirm with you
 /orchestrator    # Parallel dev + testing + standards check, fully automatic
 ```
 
@@ -55,7 +55,7 @@ Then grab a coffee.
 ```
 Your requirement description
         ↓
-/analyst-agent  →  Unit boundary document (confirmed and locked by you)
+/analyst  →  Unit boundary document (confirmed and locked by you)
         ↓
 /orchestrator
   ├── test-agent (parallel)       Generates test cases from requirements — no implementation exists yet
@@ -99,10 +99,10 @@ Answer a few questions (tech stack, directory structure, quality tools). It gene
 ### Step 3: Describe your requirement
 
 ```
-/analyst-agent
+/analyst
 ```
 
-Describe what you want to build in plain language. `analyst-agent` breaks it into independent business units. After you confirm, it's saved to `upgrade_plan/v{VERSION}/requirement_analysis.md` (version number is auto-incremented per run).
+Describe what you want to build in plain language. `analyst` breaks it into independent business units. After you confirm, it's saved to `upgrade_plan/v{VERSION}/requirement_analysis.md` (version number is auto-incremented per run).
 
 ### Step 4: One command to build
 

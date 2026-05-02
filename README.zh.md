@@ -21,7 +21,7 @@
 具体做了三件事：
 
 **① 流程可量化**
-需求经 `analyst-agent` 拆解成独立单元，与你确认后锁定，不是 Claude 自由发挥。
+需求经 `analyst` 拆解成独立单元，与你确认后锁定，不是 Claude 自由发挥。
 
 **② 无依赖单元全部并行**
 `orchestrator` 按依赖图调度，没有依赖的单元同时执行。10 个模块不是排队跑 10 次，是同时跑。需求越大，优势越明显。
@@ -42,7 +42,7 @@
 **有了 maestro**：
 
 ```
-/analyst-agent   # 描述需求，拆解成独立单元，与你确认
+/analyst   # 描述需求，拆解成独立单元，与你确认
 /orchestrator    # 并行开发 + 测试 + 规范检查，全自动
 ```
 
@@ -55,7 +55,7 @@
 ```
 你的需求描述
       ↓
-/analyst-agent  →  单元边界文档（你确认后锁定）
+/analyst  →  单元边界文档（你确认后锁定）
       ↓
 /orchestrator
   ├── test-agent（并行）        基于需求文档生成测试用例，此时实现不存在
@@ -99,10 +99,10 @@ cd claude-code-maestro
 ### 第三步：描述需求
 
 ```
-/analyst-agent
+/analyst
 ```
 
-用自然语言描述要做什么，`analyst-agent` 拆解成独立业务单元，你确认后存入 `upgrade_plan/v{VERSION}/requirement_analysis.md`（版本号按运行次数自动递增）。
+用自然语言描述要做什么，`analyst` 拆解成独立业务单元，你确认后存入 `upgrade_plan/v{VERSION}/requirement_analysis.md`（版本号按运行次数自动递增）。
 
 ### 第四步：一键开发
 

@@ -2,7 +2,7 @@
 name: orchestrator
 description: >
   多 Agent 协作开发的主调度器。当用户输入 /orchestrator 时使用此 skill。
-  读取 analyst-agent 生成的需求分析文档，按依赖图并行派发项目级 Agent，
+  读取 analyst 生成的需求分析文档，按依赖图并行派发项目级 Agent，
   通过 task_state.json 维护执行状态，支持断点续跑。
 ---
 
@@ -10,7 +10,7 @@ description: >
 
 ## 你的角色
 
-你是主调度器，运行在主会话线程中。你的需求来源是 analyst-agent 生成的需求分析文档，而不是对话记忆。
+你是主调度器，运行在主会话线程中。你的需求来源是 analyst 生成的需求分析文档，而不是对话记忆。
 
 **你的职责：**
 1. 维护 `upgrade_plan/v{VERSION}/task_state.json`（唯一机器状态源）
@@ -21,7 +21,7 @@ description: >
 - 不直接写业务代码
 - 不执行测试
 - 不依赖对话记忆，所有状态从 task_state.json 读取
-- 不自行判断单元边界（职能属于 analyst-agent + 用户）
+- 不自行判断单元边界（职能属于 analyst + 用户）
 
 ## 派发机制
 
@@ -190,7 +190,7 @@ else：
 <!-- UNIT_BOUNDARY_TABLE_END -->
 ```
 
-> 若文档不存在或缺少单元边界表，停止执行，提示用户先运行 /analyst-agent。
+> 若文档不存在或缺少单元边界表，停止执行，提示用户先运行 /analyst。
 
 校验通过后：
 - 执行 `git branch --show-current` 获取分支名，记为 `branch`
@@ -533,7 +533,7 @@ phase = "done"
 
 | 异常 | 处理 |
 |------|------|
-| requirement_analysis.md 缺少单元边界表 | 停止，提示用户先运行 /analyst-agent |
+| requirement_analysis.md 缺少单元边界表 | 停止，提示用户先运行 /analyst |
 | task_state.json 已存在但 phase = done/aborted | 提示用户该版本已完成，如需重新执行请升级 VERSION |
 | Agent 返回非 JSON | 记录原始输出到 history，phase = failed，上报用户 |
 | next_action = need_human | 上报对应单元，等待用户指令 |
