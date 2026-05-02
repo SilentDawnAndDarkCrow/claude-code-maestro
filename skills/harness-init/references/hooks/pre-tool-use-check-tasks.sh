@@ -114,7 +114,7 @@ if [[ "$FILE_PATH" == *"upgrade_plan/v${VERSION}/task_state.json" ]]; then
     echo "" >&2
     echo "  期望路径：upgrade_plan/v${VERSION}/requirement_analysis.md" >&2
     echo "" >&2
-    echo "  请先运行 /analyst-agent 完成需求分析，再启动 /orchestrator。" >&2
+    echo "  请先运行 /analyst 完成需求分析，再启动 /orchestrator。" >&2
     echo "" >&2
     exit 2
   fi
@@ -126,7 +126,7 @@ if [[ "$FILE_PATH" == *"upgrade_plan/v${VERSION}/task_state.json" ]]; then
     echo "  文档路径：upgrade_plan/v${VERSION}/requirement_analysis.md" >&2
     echo "  缺少标记：<!-- UNIT_BOUNDARY_TABLE_START -->" >&2
     echo "" >&2
-    echo "  请先运行 /analyst-agent 完成单元边界分析，用户确认后再启动 /orchestrator。" >&2
+    echo "  请先运行 /analyst 完成单元边界分析，用户确认后再启动 /orchestrator。" >&2
     echo "" >&2
     exit 2
   fi

@@ -1,6 +1,6 @@
 ---
-name: analyst-agent
-description: 需求分析 skill，用于在 /orchestrator 执行前生成「单元边界草案」。当用户描述新功能开发、模块重构、接口变更，或明确说要分析需求、划分测试单元、运行 /analyst-agent 时触发。输出一份包含完整推理链的分析报告，供用户审阅确认后作为 orchestrator 的输入文档。
+name: analyst
+description: 需求分析 skill，用于在 /orchestrator 执行前生成「单元边界草案」。当用户描述新功能开发、模块重构、接口变更，或明确说要分析需求、划分测试单元、运行 /analyst 时触发。输出一份包含完整推理链的分析报告，供用户审阅确认后作为 orchestrator 的输入文档。
 ---
 
 # Analyst Agent — 需求单元边界分析
