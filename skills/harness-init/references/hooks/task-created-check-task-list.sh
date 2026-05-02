@@ -4,19 +4,32 @@
 # 数据来源：VERSION 文件（根目录）
 # 退出码：0 = 允许，2 = 强制阻断
 
+INPUT=$(cat)
+
+# 豁免：subagent 内部 task，不受项目 TASK_LIST 门控约束
+AGENT_ID=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data.get('agent_id', ''))
+except:
+    print('')
+" 2>/dev/null)
+if [[ -n "$AGENT_ID" ]]; then exit 0; fi
+
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 VERSION_FILE="$PROJECT_ROOT/VERSION"
 
 # ==== 从根目录 VERSION 文件获取当前版本 ====
 if [ ! -f "$VERSION_FILE" ]; then
-  echo "⚠️  [TaskCreated] 未找到 VERSION 文件，跳过 TASK_LIST 检查。" >&2
+  echo "[WARN]  [TaskCreated] 未找到 VERSION 文件，跳过 TASK_LIST 检查。" >&2
   exit 0
 fi
 
 CURRENT_VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
 
 if [ -z "$CURRENT_VERSION" ]; then
-  echo "⚠️  [TaskCreated] VERSION 文件为空，跳过检查。" >&2
+  echo "[WARN]  [TaskCreated] VERSION 文件为空，跳过检查。" >&2
   exit 0
 fi
 
@@ -25,7 +38,7 @@ TASK_LIST="$PROJECT_ROOT/upgrade_plan/v${CURRENT_VERSION}/TASK_LIST.md"
 # ==== 检查 TASK_LIST.md 是否存在 ====
 if [ ! -f "$TASK_LIST" ]; then
   echo "" >&2
-  echo "⛔ Task 创建被阻止：当前版本 v${CURRENT_VERSION} 尚未建立 TASK_LIST.md" >&2
+  echo "[BLOCKED] Task 创建被阻止：当前版本 v${CURRENT_VERSION} 尚未建立 TASK_LIST.md" >&2
   echo "" >&2
   echo "  版本来源：VERSION 文件" >&2
   echo "  期望路径：upgrade_plan/v${CURRENT_VERSION}/TASK_LIST.md" >&2
@@ -43,5 +56,5 @@ TOTAL=$(grep -c "^| T" "$TASK_LIST" 2>/dev/null || echo "0")
 COMPLETED=$(grep -c "| completed |" "$TASK_LIST" 2>/dev/null || echo "0")
 IN_PROCESS=$(grep -c "| in_progress |" "$TASK_LIST" 2>/dev/null || echo "0")
 
-echo "✅ [TaskCreated] v${CURRENT_VERSION} — TASK_LIST 已存在（${COMPLETED}/${TOTAL} 完成，${IN_PROCESS} 进行中）" >&2
+echo "[OK] [TaskCreated] v${CURRENT_VERSION} — TASK_LIST 已存在（${COMPLETED}/${TOTAL} 完成，${IN_PROCESS} 进行中）" >&2
 exit 0

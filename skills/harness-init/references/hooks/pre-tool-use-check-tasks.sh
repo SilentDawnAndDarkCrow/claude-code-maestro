@@ -6,6 +6,22 @@
 # 从 stdin 读取工具调用信息（JSON）
 INPUT=$(cat)
 
+# ==== 豁免：subagent 上下文 ====
+# settings.json 的 hooks 会级联到所有 subagent，但 subagent 由 orchestrator 管理状态，
+# 不需要 TASK_LIST 门控。agent 专用约束通过 agent frontmatter 的 hooks 字段单独定义。
+AGENT_ID=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data.get('agent_id', ''))
+except:
+    print('')
+" 2>/dev/null)
+
+if [[ -n "$AGENT_ID" ]]; then
+  exit 0
+fi
+
 # 提取工具名称
 TOOL_NAME=$(echo "$INPUT" | python3 -c "
 import sys, json
@@ -38,19 +54,33 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # ==== 读取当前版本号（来源：VERSION 文件）====
 VERSION_FILE="$PROJECT_ROOT/VERSION"
 if [ ! -f "$VERSION_FILE" ]; then
-  echo "⛔ [版本检查] 未找到 VERSION 文件，无法确认当前版本。" >&2
+  echo "[BLOCKED] [版本检查] 未找到 VERSION 文件，无法确认当前版本。" >&2
   exit 2
 fi
 
 VERSION=$(cat "$VERSION_FILE" | tr -d '[:space:]')
 if [ -z "$VERSION" ]; then
-  echo "⛔ [版本检查] VERSION 文件为空，无法确认当前版本。" >&2
+  echo "[BLOCKED] [版本检查] VERSION 文件为空，无法确认当前版本。" >&2
   exit 2
 fi
 
 TASK_STATE="$PROJECT_ROOT/upgrade_plan/v${VERSION}/task_state.json"
 TASK_LIST="$PROJECT_ROOT/upgrade_plan/v${VERSION}/TASK_LIST.md"
 REQUIREMENT_DOC="$PROJECT_ROOT/upgrade_plan/v${VERSION}/requirement_analysis.md"
+
+# ==== 主 context 保护：禁止直接写入测试目录 ====
+# 测试文件由 test-writer sub-agent 负责；sub-agent 写入时会因 agent_id 非空而在上方豁免。
+# 到达此处意味着是主 context（orchestrator）在写文件，不允许触碰 tests/。
+if [[ "$FILE_PATH" == *"/tests/"* || "$FILE_PATH" == "tests/"* ]]; then
+  if [ -f "$TASK_STATE" ]; then
+    echo "" >&2
+    echo "[BLOCKED] [测试保护] 主 context 禁止直接修改测试目录。" >&2
+    echo "  测试文件由 test-writer sub-agent 生成并锁定，orchestrator 不可触碰。" >&2
+    echo "  目标文件：${FILE_PATH}" >&2
+    echo "" >&2
+    exit 2
+  fi
+fi
 
 # ==== 豁免：TASK_LIST.md 本身的修改始终允许 ====
 if [[ "$FILE_PATH" == *"upgrade_plan/v${VERSION}/TASK_LIST.md" ]]; then
@@ -80,7 +110,7 @@ if [[ "$FILE_PATH" == *"upgrade_plan/v${VERSION}/task_state.json" ]]; then
   # 必须校验 requirement_analysis.md 包含单元边界表
   if [ ! -f "$REQUIREMENT_DOC" ]; then
     echo "" >&2
-    echo "⛔ [需求分析检查] 禁止初始化 task_state.json：需求分析文档不存在。" >&2
+    echo "[BLOCKED] [需求分析检查] 禁止初始化 task_state.json：需求分析文档不存在。" >&2
     echo "" >&2
     echo "  期望路径：upgrade_plan/v${VERSION}/requirement_analysis.md" >&2
     echo "" >&2
@@ -91,7 +121,7 @@ if [[ "$FILE_PATH" == *"upgrade_plan/v${VERSION}/task_state.json" ]]; then
 
   if ! grep -q "UNIT_BOUNDARY_TABLE_START" "$REQUIREMENT_DOC"; then
     echo "" >&2
-    echo "⛔ [需求分析检查] 禁止初始化 task_state.json：需求分析文档缺少单元边界表。" >&2
+    echo "[BLOCKED] [需求分析检查] 禁止初始化 task_state.json：需求分析文档缺少单元边界表。" >&2
     echo "" >&2
     echo "  文档路径：upgrade_plan/v${VERSION}/requirement_analysis.md" >&2
     echo "  缺少标记：<!-- UNIT_BOUNDARY_TABLE_START -->" >&2
@@ -101,7 +131,7 @@ if [[ "$FILE_PATH" == *"upgrade_plan/v${VERSION}/task_state.json" ]]; then
     exit 2
   fi
 
-  echo "✅ [需求分析] v${VERSION} — 单元边界表校验通过，允许初始化 task_state.json。" >&2
+  echo "[OK] [需求分析] v${VERSION} — 单元边界表校验通过，允许初始化 task_state.json。" >&2
   exit 0
 fi
 
@@ -118,7 +148,7 @@ except:
 
   if [[ "$PHASE" == "unit_testing" || "$PHASE" == "integration_testing" || "$PHASE" == "interface_testing" || "$PHASE" == "review" ]]; then
     echo "" >&2
-    echo "⛔ 当前 phase=${PHASE}，禁止修改代码文件。" >&2
+    echo "[BLOCKED] 当前 phase=${PHASE}，禁止修改代码文件。" >&2
     echo "  该阶段只允许更新 TASK_LIST.md 或 task_state.json。" >&2
     echo "  目标文件：${FILE_PATH}" >&2
     echo "" >&2
@@ -129,7 +159,7 @@ fi
 # ==== 检查1：TASK_LIST.md 是否存在 ====
 if [ ! -f "$TASK_LIST" ]; then
   echo "" >&2
-  echo "⛔ 操作被强制拒绝：未找到当前版本的 TASK_LIST.md" >&2
+  echo "[BLOCKED] 操作被强制拒绝：未找到当前版本的 TASK_LIST.md" >&2
   echo "" >&2
   echo "  当前版本：v${VERSION}" >&2
   echo "  期望路径：upgrade_plan/v${VERSION}/TASK_LIST.md" >&2
@@ -147,7 +177,7 @@ IN_PROCESS_COUNT=$(grep -c "| in_progress |" "$TASK_LIST" 2>/dev/null || echo "0
 
 if [ "$IN_PROCESS_COUNT" -eq 0 ]; then
   echo "" >&2
-  echo "⛔ 操作被强制拒绝：当前没有 in_progress 状态的任务" >&2
+  echo "[BLOCKED] 操作被强制拒绝：当前没有 in_progress 状态的任务" >&2
   echo "" >&2
   echo "  当前版本：v${VERSION}" >&2
   echo "  TASK_LIST：upgrade_plan/v${VERSION}/TASK_LIST.md" >&2
@@ -171,7 +201,7 @@ if [ "$IN_PROCESS_COUNT" -eq 0 ]; then
 fi
 
 # ==== 通过检查：显示当前进行中任务 ====
-echo "✅ [TASK_LIST] v${VERSION} — 当前进行中任务：" >&2
+echo "[OK] [TASK_LIST] v${VERSION} — 当前进行中任务：" >&2
 grep "| in_progress |" "$TASK_LIST" | while IFS= read -r line; do
   echo "   $line" >&2
 done

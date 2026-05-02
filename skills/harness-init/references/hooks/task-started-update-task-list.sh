@@ -5,6 +5,18 @@
 # 退出码：0 = 正常（不阻断）
 
 INPUT=$(cat)
+
+# 豁免：subagent 内部 task，不污染项目 TASK_LIST.md
+AGENT_ID=$(echo "$INPUT" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    print(data.get('agent_id', ''))
+except:
+    print('')
+" 2>/dev/null)
+if [[ -n "$AGENT_ID" ]]; then exit 0; fi
+
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 VERSION_FILE="$PROJECT_ROOT/VERSION"
 
@@ -98,7 +110,7 @@ task_id = cols[1] if len(cols) > 1 else '?'
 task_desc = cols[2] if len(cols) > 2 else '?'
 
 print(f'', file=sys.stderr)
-print(f'🔄 [TaskStarted] v{version} — {task_id} 已标记为 in_progress', file=sys.stderr)
+print(f'[...] [TaskStarted] v{version} — {task_id} 已标记为 in_progress', file=sys.stderr)
 print(f'   {task_desc}', file=sys.stderr)
 print(f'', file=sys.stderr)
 print(f'   进度：{completed}/{total} 完成', end='', file=sys.stderr)
