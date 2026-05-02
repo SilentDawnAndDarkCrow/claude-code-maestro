@@ -78,21 +78,20 @@ description: >
 
 ### Step 0：模式检测
 
+检测项目当前状态，向用户展示检测结果，由用户选择模式：
+
 ```
-if 项目根目录存在 .claude/rules/specifications/ 目录：
-    → Mode C：补充模式（Harness 已初始化）
+检测到：
+  · .claude/ 目录：[存在 / 不存在]
+  · manifest 文件或源码目录：[存在 / 不存在]
 
-else if 项目根目录存在任意 manifest 文件或源码目录（非空项目）：
-    → Mode B：旧项目接入
-
-else：
-    → Mode A：全新项目
+请选择模式：
+  A. 全新项目         — 从零初始化
+  B. 旧项目接入       — 已有代码库，首次引入 Harness
+  C. 已有 Harness     — 追加技术栈组件、目录或修改约定
 ```
 
-> 使用 `.claude/rules/specifications/` 而非 `.claude/` 作为判断依据：
-> Claude Code 本身也会创建 `.claude/` 目录，仅凭 `.claude/` 存在无法判断 Harness 是否已初始化。
->
-> 判断"非空项目"的依据：存在任意 manifest 文件（见 Step B1 列表）或 `src/`、`app/` 等源码目录。
+检测结果仅作参考，用户可自由选择，不强制跳转。
 
 ---
 
