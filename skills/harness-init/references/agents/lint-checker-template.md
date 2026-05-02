@@ -60,6 +60,9 @@ python3 .claude/hooks/review_checks.py
 
 对每个 diff 块，按规范文件中的约束逐条核查，结合脚本检查结果汇总所有违规。
 
+**testing.md 读取规则：** 只检查 `<!-- SPEC_START -->` 到 `<!-- SPEC_END -->` 之间的规则。
+`<!-- PATTERNS_START -->` 到 `<!-- PATTERNS_END -->` 之间是测试模式参考，不作为检验依据，跳过。
+
 ## 输出（纯 JSON，无额外文字）
 
 ```json
