@@ -451,6 +451,8 @@ Step 6 将根据这两个集合生成对应 Hook 文件。
    - 目录结构说明
    - 任务管理规范（TASK_LIST.md 创建和状态流转规则）
    - 规范文件路径指引（指向 `.claude/rules/specifications/`）
+   - testing.md 分区说明：`SPEC_START/END` 区间为强制规范（lint-checker 检验范围）；
+     `PATTERNS_START/END` 区间为测试模式参考（test-writer / impl-worker 按上下文选用，不做检验）
 3. `.claude/rules/specifications/coding.md`
 4. `.claude/rules/specifications/testing.md`（结构见下方说明）
 5. `.claude/rules/specifications/security.md`
